@@ -18,8 +18,6 @@ plans = ["시험 대비", "예습", "복습"]
 # 날짜별 기록 관리
 if "saved_date" not in st.session_state:
     st.session_state.saved_date = date.today()
-
-if "records" not in st.session_state:
     st.session_state.records = []
 
 if st.session_state.saved_date != date.today():
@@ -87,6 +85,17 @@ if records:
     total_planned = sum(r["planned"] for r in records)
     total_actual = sum(r["actual"] for r in records)
     completed_count = sum(r["completed"] for r in records)
+
+    # 150분 초과 시 축하 문구와 과자 보상
+    if total_actual > 150:
+        st.balloons()
+        st.success("🎉 축하합니다! 실제 공부 시간 150분 달성!")
+        st.write("열심히 공부한 당신에게 맛있는 과자를 드립니다! 🍪")
+        st.image(
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Cookies.jpg",
+            caption="오늘의 공부 보상! 맛있는 쿠키 🍪",
+            width=300
+        )
 
     achievement = check_risk(total_planned, total_actual)
 
