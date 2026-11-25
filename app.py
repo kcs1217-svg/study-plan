@@ -58,7 +58,6 @@ study_plan = st.selectbox("공부 목적", plans)
 # 과목별 공부 시간 입력
 planned_times = {}
 actual_times = {}
-completed_subjects = {}
 
 if selected_subjects:
     st.write("### ⏰ 과목별 공부 시간")
@@ -86,11 +85,6 @@ if selected_subjects:
                 key=f"actual_{subject}"
             )
 
-        completed_subjects[subject] = st.checkbox(
-            f"{subject} 공부 완료",
-            key=f"completed_{subject}"
-        )
-
 # 공부 기록 저장
 if st.button("공부 기록 저장하기"):
     if len(selected_subjects) == 0:
@@ -98,12 +92,17 @@ if st.button("공부 기록 저장하기"):
 
     else:
         for subject in selected_subjects:
+            # 계획 시간과 실제 시간을 비교하여 자동 판정
+            is_completed = (
+                actual_times[subject] >= planned_times[subject]
+            )
+
             st.session_state.records.append({
                 "subject": subject,
                 "plan": study_plan,
                 "planned": planned_times[subject],
                 "actual": actual_times[subject],
-                "completed": completed_subjects[subject]
+                "completed": is_completed
             })
 
         st.success("공부 기록이 저장되었습니다!")
@@ -217,9 +216,12 @@ if records:
             f"계획: {record['planned']}분 | "
             f"실제: {record['actual']}분"
         )
-        st.write(
-            "완료" if record["completed"] else "미완료"
-        )
+
+        # 자동 완료 여부 표시
+        if record["actual"] >= record["planned"]:
+            st.success("✅ 완료")
+        else:
+            st.warning("❌ 미완료")
 
 else:
     st.info("아직 저장된 공부 기록이 없습니다.")
@@ -230,4 +232,3 @@ st.divider()
 if st.button("오늘의 기록 초기화"):
     st.session_state.records = []
     st.rerun()
-
