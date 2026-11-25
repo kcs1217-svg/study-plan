@@ -87,7 +87,7 @@ if records:
     completed_count = sum(r["completed"] for r in records)
 
     # 150분 초과 시 축하 문구와 과자 보상
-    if total_actual > 150:
+    if total_actual >= 150:
         st.balloons()
         st.success("🎉 축하합니다! 실제 공부 시간 150분 달성!")
         st.write("열심히 공부한 당신에게 맛있는 과자를 드립니다! 🍪")
