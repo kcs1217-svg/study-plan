@@ -18,6 +18,8 @@ plans = ["시험 대비", "예습", "복습"]
 # 날짜별 기록 관리
 if "saved_date" not in st.session_state:
     st.session_state.saved_date = date.today()
+
+if "records" not in st.session_state:
     st.session_state.records = []
 
 if st.session_state.saved_date != date.today():
@@ -45,35 +47,66 @@ def evaluate(achievement):
 # 3. 공부 계획 입력
 st.subheader("📝 오늘의 공부 계획")
 
-subject = st.selectbox("공부 과목", subjects)
+selected_subjects = st.multiselect(
+    "공부할 과목을 여러 개 선택하세요.",
+    subjects,
+    placeholder="과목을 선택하세요."
+)
+
 study_plan = st.selectbox("공부 목적", plans)
 
-planned_time = st.number_input(
-    "계획한 공부 시간(분)",
-    min_value=1,
-    max_value=300,
-    value=60
-)
+# 과목별 공부 시간 입력
+planned_times = {}
+actual_times = {}
+completed_subjects = {}
 
-actual_time = st.number_input(
-    "실제로 공부한 시간(분)",
-    min_value=0,
-    max_value=300,
-    value=0
-)
+if selected_subjects:
+    st.write("### ⏰ 과목별 공부 시간")
 
-completed = st.checkbox("공부 계획을 완료했나요?")
+    for subject in selected_subjects:
+        st.markdown(f"**📖 {subject}**")
 
-# 계획 저장
+        col1, col2 = st.columns(2)
+
+        with col1:
+            planned_times[subject] = st.number_input(
+                f"{subject} 계획 시간(분)",
+                min_value=1,
+                max_value=300,
+                value=60,
+                key=f"planned_{subject}"
+            )
+
+        with col2:
+            actual_times[subject] = st.number_input(
+                f"{subject} 실제 공부 시간(분)",
+                min_value=0,
+                max_value=300,
+                value=0,
+                key=f"actual_{subject}"
+            )
+
+        completed_subjects[subject] = st.checkbox(
+            f"{subject} 공부 완료",
+            key=f"completed_{subject}"
+        )
+
+# 공부 기록 저장
 if st.button("공부 기록 저장하기"):
-    st.session_state.records.append({
-        "subject": subject,
-        "plan": study_plan,
-        "planned": planned_time,
-        "actual": actual_time,
-        "completed": completed
-    })
-    st.success("공부 기록이 저장되었습니다!")
+    if len(selected_subjects) == 0:
+        st.warning("공부할 과목을 하나 이상 선택해 주세요.")
+
+    else:
+        for subject in selected_subjects:
+            st.session_state.records.append({
+                "subject": subject,
+                "plan": study_plan,
+                "planned": planned_times[subject],
+                "actual": actual_times[subject],
+                "completed": completed_subjects[subject]
+            })
+
+        st.success("공부 기록이 저장되었습니다!")
 
 # 4. 공부 관리 결과
 st.divider()
@@ -82,21 +115,24 @@ st.subheader("📊 오늘의 공부 관리 결과")
 records = st.session_state.records
 
 if records:
+
     total_planned = sum(r["planned"] for r in records)
     total_actual = sum(r["actual"] for r in records)
     completed_count = sum(r["completed"] for r in records)
 
-    # 150분 초과 시 축하 문구와 과자 보상
-    if total_actual >= 150:
+    # 150분 초과 시 보상
+    if total_actual > 150:
         st.balloons()
         st.success("🎉 축하합니다! 실제 공부 시간 150분 달성!")
         st.write("열심히 공부한 당신에게 맛있는 과자를 드립니다! 🍪")
+
         st.image(
             "https://commons.wikimedia.org/wiki/Special:FilePath/Cookies.jpg",
             caption="오늘의 공부 보상! 맛있는 쿠키 🍪",
             width=300
         )
 
+    # 전체 공부 시간
     achievement = check_risk(total_planned, total_actual)
 
     col1, col2 = st.columns(2)
@@ -110,6 +146,7 @@ if records:
 
     st.write(evaluate(achievement))
 
+    # 계획 완료율
     st.write(
         f"완료한 계획: {completed_count} / {len(records)}개"
     )
@@ -120,8 +157,57 @@ if records:
     st.progress(int(completion_rate))
     st.write(f"**{completion_rate:.1f}%**")
 
+    # 5. 과목별 공부 시간 분석
+    st.divider()
+    st.subheader("📈 과목별 공부 시간 분석")
+
+    subject_stats = {}
+
+    for subject in subjects:
+        subject_records = [
+            r for r in records if r["subject"] == subject
+        ]
+
+        if subject_records:
+            planned = sum(r["planned"] for r in subject_records)
+            actual = sum(r["actual"] for r in subject_records)
+
+            rate = check_risk(planned, actual)
+
+            subject_stats[subject] = {
+                "planned": planned,
+                "actual": actual,
+                "rate": rate
+            }
+
+    # 과목별 그래프
+    chart_data = {
+        "계획 시간": {
+            s: v["planned"] for s, v in subject_stats.items()
+        },
+        "실제 공부 시간": {
+            s: v["actual"] for s, v in subject_stats.items()
+        }
+    }
+
+    st.write("과목별 계획 시간과 실제 공부 시간 비교")
+    st.bar_chart(chart_data)
+
+    # 과목별 달성률
+    st.write("### 과목별 달성률")
+
+    for subject, data in subject_stats.items():
+        st.write(f"**{subject}**")
+        st.write(
+            f"계획: {data['planned']}분 / "
+            f"실제: {data['actual']}분"
+        )
+        st.progress(int(data["rate"]))
+        st.write(f"달성률: {data['rate']:.1f}%")
+
     # 과목별 기록
-    st.write("### 📖 과목별 공부 기록")
+    st.divider()
+    st.subheader("📖 과목별 공부 기록")
 
     for i, record in enumerate(records, 1):
         st.write(
@@ -138,9 +224,10 @@ if records:
 else:
     st.info("아직 저장된 공부 기록이 없습니다.")
 
-# 기록 초기화
+# 6. 기록 초기화
 st.divider()
 
 if st.button("오늘의 기록 초기화"):
     st.session_state.records = []
     st.rerun()
+
